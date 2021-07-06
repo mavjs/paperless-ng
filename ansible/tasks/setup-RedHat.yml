@@ -1,0 +1,50 @@
+---
+- name: install base dependencies
+  dnf:
+    update_cache: yes
+    pkg:
+      # paperless-ng
+      - python3-pip
+      - python3-devel
+      - liberation-fonts
+      - ImageMagick
+      - optipng
+      - gnupg2
+      - libpq-devel
+      - file-devel
+      - shared-mime-info
+      # OCRmyPDF
+      - unpaper
+      - ghostscript
+      - icc-profiles-openicc
+      - qpdf
+      - leptonica
+      - libxml2
+      - pngquant
+      - zlib
+      - tesseract
+      # dev
+      - python3-setuptools
+      - python3-wheel
+
+- name: install ocr languages
+  dnf:
+    pkg: "{{ paperlessng_ocr_languages | map('regex_replace', '^(.*)$', 'tesseract-langpack-\\1') | list }}"
+
+- name: install redis server
+  dnf:
+    pkg: redis
+  when: paperlessng_redis_host == 'localhost' or paperlessng_redis_host == '127.0.0.1'
+
+- name: install jbig2enc build dependencies
+  dnf:
+    pkg:
+      - gcc-c++
+      - libtool
+      - make
+      - leptonica-devel
+      - zlib-devel
+      - libpng-devel
+      - openlibm-devel
+  when: ansible_os_family == 'RedHat' and paperlessng_use_jbig2enc
+

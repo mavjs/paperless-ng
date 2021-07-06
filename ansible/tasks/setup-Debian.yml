@@ -1,0 +1,77 @@
+---
+- name: install base dependencies
+  apt:
+    update_cache: yes
+    pkg:
+      # paperless-ng
+      - python3-pip
+      - python3-dev
+      - fonts-liberation
+      - imagemagick
+      - optipng
+      - gnupg
+      - libpq-dev
+      - libmagic-dev
+      - mime-support
+      # OCRmyPDF
+      - unpaper
+      - ghostscript
+      - icc-profiles-free
+      - qpdf
+      - liblept5
+      - libxml2
+      - pngquant
+      - zlib1g
+      - tesseract-ocr
+      # dev
+      - sudo
+      - build-essential
+      - python3-setuptools
+      - python3-wheel
+
+# upstream virtualenv in Ubuntu 20.04 is broken
+# https://github.com/pypa/virtualenv/issues/1873
+- name: install python virtualenv
+  pip:
+    name: virtualenv
+    extra_args: --upgrade
+
+- name: install ocr languages
+  apt:
+    pkg: "{{ paperlessng_ocr_languages | map('regex_replace', '^(.*)$', 'tesseract-ocr-\\1') | map('replace', '_', '-') | list }}"
+
+- name: set up notesalexp repository key (for jbig2enc)
+  apt_key:
+    url: https://notesalexp.org/debian/alexp_key.asc
+    state: present
+  when: paperlessng_use_jbig2enc
+
+- name: set up notesalexp repository (for jbig2enc)
+  apt_repository:
+    repo: "deb https://notesalexp.org/debian/{{ ansible_distribution_release }}/ {{ ansible_distribution_release }} main"
+    state: present
+  when: paperlessng_use_jbig2enc
+
+- name: set up notesalexp repository pinning
+  copy:
+    content: |
+      Package: *
+      Pin: release o=notesalexp.org
+      Pin-Priority: 1
+
+      Package: jbig2enc
+      Pin: release o=notesalexp.org
+      Pin-Priority: 500
+    dest: /etc/apt/preferences.d/notesalexp
+  when: paperlessng_use_jbig2enc
+
+- name: install jbig2enc
+  apt:
+    pkg: jbig2enc
+    update_cache: yes
+  when: paperlessng_use_jbig2enc
+
+- name: install redis
+  apt:
+    pkg: redis-server
+  when: paperlessng_redis_host == 'localhost' or paperlessng_redis_host == '127.0.0.1'

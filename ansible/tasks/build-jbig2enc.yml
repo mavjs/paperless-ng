@@ -1,0 +1,42 @@
+---
+- name: create temporary download folder for jbig2enc
+  tempfile:
+    state: directory
+    suffix: jbig2enc-build
+  register: builddir
+
+- name: download jbig2enc release archive
+  unarchive:
+    src: "https://github.com/agl/jbig2enc/archive/refs/tags/0.29.tar.gz"
+    remote_src: yes
+    dest: "{{ builddir.path }}"
+
+- name: patch pdf.py file inside jbig2enc
+  lineinfile:
+    path: "{{ builddir.path }}/jbig2enc-0.29/pdf.py"
+    regexp: "^#\!\/usr\/bin\/python"
+    line: "#!/usr/bin/python2"
+
+- name: patch version in configure.ac
+  lineinfile:
+    path: "{{ builddir.path }}/jbig2enc-0.29/configure.ac"
+    regexp: "^AC_INIT\("
+    line: "AC_INIT([jbig2enc], [0.29], [agl@imperialviolet.org], [jbig2enc-0.29],"
+
+- name: patch MINOR_VERSION in configure.ac
+  lineinfile:
+    path: "{{ builddir.path }}/jbig2enc-0.29/configure.ac"
+    regexp: "^GENERIC_MINOR_VERSION"
+    line: "GENERIC_MINOR_VERSION=29"
+
+- name: build jbig2enc
+  become: yes
+  command:
+    cmd: "{{ item }}"
+  with_items:
+    - "./autogen.sh"
+    - "./configure"
+    - "make"
+    - "make install"
+  args:
+    chdir: "{{ builddir.path }}/jbig2enc-0.29/"
